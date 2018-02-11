@@ -21,6 +21,8 @@ line input.
 
 var express = require('express'); // web server application
 var app = express(); // webapp
+const filterous = require('filterous');
+var fs = require('fs');
 var http = require('http').Server(app); // connects http library to server
 var io = require('socket.io')(http); // connect websocket library to server
 var serverPort = 8000;
@@ -28,6 +30,43 @@ var SerialPort = require('serialport'); // serial library
 var Readline = SerialPort.parsers.Readline; // read serial data as lines
 //-- Addition:
 var NodeWebcam = require( "node-webcam" );// load the webcam module
+
+var currentFilter = 'normal';
+var imageName = '';
+var filteredImageName = '';
+
+function makeFilteredPicture() {
+  let buf = fs.readFileSync('public/'+imageName+'.jpg');
+  filterous.importImage(buf)
+    .applyInstaFilter(currentFilter) // console prints filter name
+    .save('public/'+filteredImageName);
+  setTimeout(function() {
+      io.emit('newPicture', filteredImageName);
+      console.log('emitting ' + filteredImageName);},
+    500);
+}
+
+function takePicture() {
+  filter = currentFilter;;
+  imageName = new Date().toString().replace(/[&\/\\#,+()$~%.'":*?<>{}\s-]/g, '');
+  filteredImageName = imageName+'_'+filter+'.jpg';
+  console.log('making a picture at '+ imageName); // Second, the name is logged to the console.
+
+  //Third, the picture is  taken and saved to the `public/`` folder
+  NodeWebcam.capture('public/'+imageName, opts, function( err, data ) {
+    console.log('captured public/' + imageName + '.jpg');
+    makeFilteredPicture();
+  });
+  ///Lastly, the new name is send to the client web browser.
+  /// The browser will take this new name and load the picture from the public folder.
+}
+
+function setFilter(filter=currentFilter) {
+  console.log('Set the filter to', filter)
+  currentFilter = filter;
+  filteredImageName = imageName+'_'+filter+'.jpg';
+  if (imageName.length != 0) makeFilteredPicture();
+}
 
 //---------------------- WEBAPP SERVER SETUP ---------------------------------//
 // use express to create the simple webapp
@@ -88,6 +127,10 @@ serial.pipe(parser);
 parser.on('data', function(data) {
   console.log('Data:', data);
   io.emit('server-msg', data);
+  if (data == 'dark') {
+    console.log('Button pressed');
+    takePicture();
+  }
 });
 //----------------------------------------------------------------------------//
 
@@ -110,22 +153,30 @@ io.on('connect', function(socket) {
     serial.write('L');
   });
 
-  //-- Addition: This function is called when the client clicks on the `Take a picture` button.
   socket.on('takePicture', function() {
+    takePicture();
+  });
+
+  socket.on('setFilter', function(filter) {
+    console.log('Filter:', filter);
+    setFilter(filter);
+  });
+  //-- Addition: This function is called when the client clicks on the `Take a picture` button.
+  //socket.on('takePicture', function() {
     /// First, we create a name for the new picture.
     /// The .replace() function removes all special characters from the date.
     /// This way we can use it as the filename.
-    var imageName = new Date().toString().replace(/[&\/\\#,+()$~%.'":*?<>{}\s-]/g, '');
+  //  var imageName = new Date().toString().replace(/[&\/\\#,+()$~%.'":*?<>{}\s-]/g, '');
 
-    console.log('making a making a picture at'+ imageName); // Second, the name is logged to the console.
+//    console.log('making a making a picture at'+ imageName); // Second, the name is logged to the console.
 
     //Third, the picture is  taken and saved to the `public/`` folder
-    NodeWebcam.capture('public/'+imageName, opts, function( err, data ) {
-    io.emit('newPicture',(imageName+'.jpg')); ///Lastly, the new name is send to the client web browser.
+  //  NodeWebcam.capture('public/'+imageName, opts, function( err, data ) {
+    //io.emit('newPicture',(imageName+'.jpg')); ///Lastly, the new name is send to the client web browser.
     /// The browser will take this new name and load the picture from the public folder.
-  });
+  //});
 
-  });
+  //});
   // if you get the 'disconnect' message, say the user disconnected
   socket.on('disconnect', function() {
     console.log('user disconnected');

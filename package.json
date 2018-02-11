@@ -17,9 +17,14 @@
   },
   "homepage": "https://github.com/FAR-Lab/distant-pictures#readme",
   "dependencies": {
+    "canvas": "^1.6.9",
     "express": "^4.16.2",
+    "filterous": "^2.0.2-beta",
+    "fs": "0.0.1-security",
+    "node-watch": "^0.5.7",
+    "node-webcam": "^0.4.3",
     "serialport": "^6.0.4",
     "socket.io": "^2.0.4",
-    "node-webcam": "^0.4.3"
+    "sync": "^0.2.5"
   }
 }

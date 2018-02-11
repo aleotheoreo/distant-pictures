@@ -29,6 +29,11 @@ function takePicture(){
   socket.emit('takePicture');
 }
 
+function setFilter(){
+  var selectedFilter = document.getElementById("filter").value;
+  socket.emit('setFilter', selectedFilter);
+}
+
 //-- Addition: This function receives the new image name and applies it to html element.
 
 socket.on('newPicture', function(msg) {
